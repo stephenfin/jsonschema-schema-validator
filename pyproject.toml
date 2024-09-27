@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    {name = "Stephen Finucane", email = "stephen@that.guru"},
+]
+dynamic = ["version"]
+license = {text = "BSD-3-Clause"}
+name = "jsonschema-schema-validator"
+readme = "README.rst"
+requires-python = ">=3.9"
+
+[tool.mypy]
+strict = true
+exclude = [
+    "tests"
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
