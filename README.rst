@@ -2,7 +2,9 @@
 jsonschema-schema-validator
 ===========================
 
-A strict validator for JSON Schema schema.
+A strict validator for JSON Schema schemas. Only `Draft 2020-12`__ is currently supported.
+
+.. __: https://json-schema.org/draft/2020-12
 
 .. warning::
 
