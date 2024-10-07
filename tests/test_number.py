@@ -11,12 +11,12 @@ from jsonschema_schema_validator import validator
         {'exclusiveMinimum': 0},
         {'maximum': 99},
         {'minimum': 0},
-        {'multipleOf': 1},
+        {'multipleOf': 123},
     ],
 )
 def test_valid(schema):
-    schema = {'type': 'integer', **schema}
-    validator._validate_integer(schema)
+    schema = {'type': 'number', **schema}
+    validator._validate_number(schema)
 
 
 @pytest.mark.parametrize(
@@ -32,13 +32,13 @@ def test_valid(schema):
     ],
 )
 def test_invalid(schema):
-    schema = {'type': 'integer', **schema}
+    schema = {'type': 'number', **schema}
     with pytest.raises(exceptions.ValidationError):
-        validator._validate_integer(schema)
+        validator._validate_number(schema)
 
 
 def test_invalid_type():
     schema = {'type': 'boolean'}
     with pytest.raises(RuntimeError) as exc:
-        validator._validate_integer(schema)
-    assert "'type' must be 'integer'" in str(exc)
+        validator._validate_number(schema)
+    assert "'type' must be 'number'" in str(exc)

@@ -4,42 +4,49 @@ from jsonschema_schema_validator import exceptions
 from jsonschema_schema_validator import validator
 
 
-def test_additionalProperties_boolean():
-    schema = {'type': 'object', 'additionalProperties': True}
-    validator.validate(schema)
+@pytest.mark.parametrize(
+    'schema',
+    [
+        {'additionalProperties': True},
+        {'additionalProperties': {'type': 'string'}},
+        {'patternProperties': {r'^S_': {'type': 'string'}}},
+        {'propertyNames': {'type': 'string', 'enum': ['a', 'b']}},
+        {'propertyNames': {'enum': ['a', 'b']}},
+        {'maxProperties': 999},
+        {'minProperties': 1},
+        {'required': ['foo']},
+    ],
+)
+def test_valid(schema):
+    schema = {'type': 'object', **schema}
+    validator._validate_object(schema)
 
 
-def test_additionalProperties_schema():
+@pytest.mark.parametrize(
+    'schema',
+    [
+        {'additionalProperties': 123},
+        {'patternProperties': 'a string'},
+        {'patternProperties': {'\\z': {'type': 'string'}}},
+        {'patternProperties': {r'^S_': 'a string'}},
+        {'propertyNames': {'type': 'boolean'}},
+        {'maxProperties': '999'},
+        {'maxProperties': -1},
+        {'minProperties': '1'},
+        {'minProperties': -1},
+        {'required': 'foo'},
+    ],
+)
+def test_invalid(schema):
+    schema = {'type': 'object', **schema}
+    with pytest.raises(exceptions.ValidationError):
+        validator._validate_object(schema)
+
+
+def test_invalid_type():
     schema = {
-        'type': 'object',
-        'additionalProperties': {'type': 'string'},
+        'type': 'string',
     }
-    validator.validate(schema)
-
-
-def test_additionalProperties_invalid():
-    schema = {
-        'type': 'object',
-        'additionalProperties': 123,
-    }
-    with pytest.raises(exceptions.ValidationError) as exc:
-        validator.validate(schema)
-    assert 'additionalProperties must be a bool or a schema' in str(exc)
-
-
-def test_required():
-    schema = {
-        'type': 'object',
-        'required': ['foo'],
-    }
-    validator.validate(schema)
-
-
-def test_required__invalid():
-    schema = {
-        'type': 'object',
-        'required': 'foo',
-    }
-    with pytest.raises(exceptions.ValidationError) as exc:
-        validator.validate(schema)
-    assert 'required must be a list of property names' in str(exc)
+    with pytest.raises(RuntimeError) as exc:
+        validator._validate_object(schema)
+    assert "'type' must be 'object'" in str(exc)
