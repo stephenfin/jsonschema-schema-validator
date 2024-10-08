@@ -1,9 +1,22 @@
 import collections.abc
+from typing import Union
 
 from jsonschema_schema_validator import exceptions
 
 
 TValidator = collections.abc.Callable[[dict[str, object]], None]
+
+GENERIC_KEYWORDS = [
+    'const',
+    'default',
+    'deprecated',
+    'description',
+    'enum',
+    'examples',
+    'readOnly',
+    'title',
+    'writeOnly',
+]
 
 
 def valid_keywords(
@@ -14,16 +27,104 @@ def valid_keywords(
             if len(set(schema)) < len(list(schema)):
                 raise exceptions.ValidationError('Duplicate keywords')
 
-            if invalid_keywords := set(schema) - set(valid_keywords):
+            if invalid_keywords := set(schema) - (
+                set(valid_keywords) | set(GENERIC_KEYWORDS)
+            ):
                 raise exceptions.ValidationError(
                     f'Invalid keywords: {invalid_keywords}'
                 )
+
+            _validate_generic_keywords(schema)
 
             return fn(schema)
 
         return inner
 
     return wrapper
+
+
+def _validate_generic_keywords(schema: dict[str, object]) -> None:
+    for keyword in schema:
+        if keyword in ('description', 'title'):
+            if not isinstance(schema[keyword], str):
+                raise exceptions.ValidationError(
+                    f"'{keyword}' must be a string"
+                )
+        elif keyword in ('deprecated', 'readOnly', 'writeOnly'):
+            if not isinstance(schema[keyword], bool):
+                raise exceptions.ValidationError(
+                    f"'{keyword}' must be a boolean"
+                )
+        elif keyword in ('enum', 'examples'):
+            if not isinstance(schema[keyword], list):
+                raise exceptions.ValidationError(f"'{keyword}' must be a list")
+
+    if type_ := schema.get('type'):
+        if not isinstance(type_, str):
+            raise exceptions.ValidationError(
+                "'type' must be one of: object, array, string, number, "
+                'integer, boolean, null'
+            )
+
+        types: dict[str, Union[type, tuple[type, ...]]] = {
+            'array': list,
+            'boolean': bool,
+            'integer': (int, float),
+            'number': (int, float),
+            'object': dict,
+            'string': str,
+        }
+        if type_ not in list(types) + ['null']:
+            raise exceptions.ValidationError(
+                "'type' must be one of: object, array, string, number, "
+                'integer, boolean, null'
+            )
+
+        if const := schema.get('const'):
+            # TODO: There's nothing to say this check should exist, so we're
+            # technically out of spec. Perhaps this should be a warning
+            # instead?
+            if not isinstance(const, types[type_]):
+                raise exceptions.ValidationError(
+                    "mismatch between 'type' and type of 'const'"
+                )
+
+        if default := schema.get('default'):
+            # TODO: This should really be a warning, not an error, since "[t]he
+            # value of default should validate against the schema in which it
+            # resides, but that isn't required".
+            if not isinstance(default, types[type_]):
+                raise exceptions.ValidationError(
+                    "mismatch between 'type' and type of 'default'"
+                )
+
+        if enum := schema.get('enum'):
+            # we already did this, but mypy can't figure that out
+            if not isinstance(enum, list):
+                raise exceptions.ValidationError("'enum' must be a list")
+
+            # TODO: As above, this is not strictly necessary
+            if not all(
+                (isinstance(x, types[type_]) if type_ in types else x is None)
+                for x in enum
+            ):
+                raise exceptions.ValidationError(
+                    "mismatch between 'type' and types of 'enum'"
+                )
+
+        if examples := schema.get('examples'):
+            # we already did this, but mypy can't figure that out
+            if not isinstance(examples, list):
+                raise exceptions.ValidationError("'examples' must be a list")
+
+            # TODO: As above, this is not strictly necessary
+            if not all(
+                (isinstance(x, types[type_]) if type_ in types else x is None)
+                for x in examples
+            ):
+                raise exceptions.ValidationError(
+                    "mismatch between 'type' and types of 'examples'"
+                )
 
 
 def _validate_object_additionalProperties(prop: object) -> None:
