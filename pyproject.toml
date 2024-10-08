@@ -25,3 +25,5 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "single"
 docstring-code-format = true
+
+[tool.setuptools_scm]
